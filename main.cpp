@@ -58,11 +58,33 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 		} 
 		else 
 		{ 
+			rasterizer.ClearQuick();
+
+			// 移动摄像机
+			if(keyManager.KeyPress(VK_LEFT))
+			{
+				rasterizer.MoveCam(-0.01f, 0, 0);
+			}
+			else
+			if(keyManager.KeyPress(VK_RIGHT))
+			{
+				rasterizer.MoveCam(0.01f, 0, 0);
+			}
+			else
+			if(keyManager.KeyPress(VK_UP))
+			{
+				rasterizer.MoveCam(0, 0, 0.01f);
+			}
+			else
+			if(keyManager.KeyPress(VK_DOWN))
+			{
+				rasterizer.MoveCam(0, 0, -0.01f);
+			}
+
 			keyManager.Update();
+			rasterizer.Update();
 
-			rasterizer.DrawTriangle(799, 0, 0, 0, 0, 550, 0xffff0000 );
-			rasterizer.DrawLine(20, 20, 499, 599, 0x0000ff00);
-
+			// 鼠标画线
 			keyManager.GetCursorPosClient(pos);
 			if(keyManager.KeyDown(VK_LBUTTON))
 			{
@@ -75,7 +97,7 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 				{
 					isStart = false;
 					end = pos;
-					rasterizer.DrawLine(start.x, start.y, end.x, end.y, 0x0000ff00);
+					rasterizer.DrawLine2D(start.x, start.y, end.x, end.y, 0x0000ff00);
 				}
 			}
 

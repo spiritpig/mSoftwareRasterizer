@@ -1,5 +1,17 @@
 #include "stdafx.h"
 
+CubeVertex cubeVert[8] = 
+{
+	{ Vertex4(-1,  1, -1, 1), 0, 0, 0xffff0000 },
+	{ Vertex4( 1,  1, -1, 1), 0, 0, 0xff00ff00 },
+	{ Vertex4(-1, -1, -1, 1), 0, 0, 0xff0000ff },
+	{ Vertex4( 1, -1, -1, 1), 0, 0, 0xfff0f000 },
+	{ Vertex4(-1,  1,  1, 1), 0, 0, 0xff00f0f0 },
+	{ Vertex4( 1,  1,  1, 1), 0, 0, 0xfff000f0 },
+	{ Vertex4(-1, -1,  1, 1), 0, 0, 0xfff0f0f0 },
+	{ Vertex4( 1, -1,  1, 1), 0, 0, 0xff111111 }
+};
+
 mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 	: m_hWnd(hWnd), m_BackBuffer(NULL)
 {
@@ -15,6 +27,16 @@ mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 		0, 0, 0, 0, 0 }  };
 	m_hBackBmp = CreateDIBSection(m_hBackDc, &bi, DIB_RGB_COLORS, (void **)&m_BackBuffer, NULL, 0);
 	SelectObject(m_hBackDc, m_hBackBmp);
+
+	m_PreVertexList.clear();
+	m_PreVertexList.push_back(cubeVert[0]);
+	m_PreVertexList.push_back(cubeVert[1]);
+	m_PreVertexList.push_back(cubeVert[2]);
+	m_PreVertexList.push_back(cubeVert[3]);
+	m_PreVertexList.push_back(cubeVert[4]);
+	m_PreVertexList.push_back(cubeVert[5]);
+	m_PreVertexList.push_back(cubeVert[6]);
+	m_PreVertexList.push_back(cubeVert[7]);
 }
 
 mSoftRasterizer::~mSoftRasterizer()
@@ -26,6 +48,84 @@ mSoftRasterizer::~mSoftRasterizer()
 
 void mSoftRasterizer::Init()
 {
+	mMatrix4x4::MatIdentify(m_World);
+	m_Camera.Set(Vertex3(0, 0, -5), Vertex3(0, 0, 5), Vertex3(0, 1, 0));
+	mMatrix4x4::MatPerspective(m_Proj, 90.0f, 800.0f/600.0f, 1.0f, 2000.0f);
+}
+
+void mSoftRasterizer::Update()
+{
+	m_Transform = m_World*m_Camera.GetView()*m_Proj;
+
+	static std::vector<CubeVertex> resVertexList;
+	resVertexList.clear();
+	resVertexList.resize(36);
+
+	m_IndexList.clear();
+	m_IndexList.resize(36);
+	m_IndexList[0] = 0;
+	m_IndexList[1] = 2;
+	m_IndexList[2] = 1;
+	m_IndexList[3] = 2;
+	m_IndexList[4] = 3;
+	m_IndexList[5] = 1;
+
+	m_IndexList[6] = 1;
+	m_IndexList[7] = 3;
+	m_IndexList[8] = 5;
+	m_IndexList[9] = 3;
+	m_IndexList[10] = 7;
+	m_IndexList[11] = 5;
+
+	m_IndexList[12] = 4;
+	m_IndexList[13] = 5;
+	m_IndexList[14] = 6;
+	m_IndexList[15] = 6;
+	m_IndexList[16] = 5;
+	m_IndexList[17] = 7;
+
+	m_IndexList[18] = 0;
+	m_IndexList[19] = 4;
+	m_IndexList[20] = 2;
+	m_IndexList[21] = 2;
+	m_IndexList[22] = 4;
+	m_IndexList[23] = 6;
+
+	m_IndexList[24] = 4;
+	m_IndexList[25] = 0;
+	m_IndexList[26] = 5;
+	m_IndexList[27] = 0;
+	m_IndexList[28] = 1;
+	m_IndexList[29] = 5;
+
+	m_IndexList[30] = 6;
+	m_IndexList[31] = 7;
+	m_IndexList[32] = 2;
+	m_IndexList[33] = 2;
+	m_IndexList[34] = 7;
+	m_IndexList[35] = 3;
+
+
+	// 顶点变换
+	for(size_t i=0; i<m_IndexList.size(); ++i)
+	{
+		resVertexList[i].pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i]].pos, m_Transform);
+
+		float rhw = 1/resVertexList[i].pos.w;
+		resVertexList[i].pos.x = (resVertexList[i].pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+		resVertexList[i].pos.y = (-resVertexList[i].pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+		resVertexList[i].pos.z = resVertexList[i].pos.z*rhw;
+
+		resVertexList[i].color = m_PreVertexList[m_IndexList[i]].color;
+	}
+
+	for(size_t i=0; i<resVertexList.size(); i+=3)
+	{
+		DrawTriangle2DV2(resVertexList[i].pos.x, resVertexList[i].pos.y, 
+						resVertexList[i+1].pos.x, resVertexList[i+1].pos.y,
+						resVertexList[i+2].pos.x, resVertexList[i+2].pos.y, 
+						resVertexList[i].color);
+	}
 }
 
 void mSoftRasterizer::Present()
@@ -33,6 +133,17 @@ void mSoftRasterizer::Present()
 	HDC hdc = GetDC(m_hWnd);
 	BitBlt(hdc, 0, 0, m_BackSize.x, m_BackSize.y, m_hBackDc, 0, 0, SRCCOPY);
 	ReleaseDC(m_hWnd, hdc);
+}
+
+void mSoftRasterizer::MoveCam(float x, float y, float z)
+{
+	static Vertex3 v;
+
+	v.x = x;
+	v.y = y;
+	v.z = z;
+
+	m_Camera.Move(v);
 }
 
 void mSoftRasterizer::DrawPoint(int x, int y, int Size, DWORD color)
@@ -48,7 +159,7 @@ void mSoftRasterizer::DrawPoint(int x, int y, int Size, DWORD color)
 }
 
 // Bresenham's line algorithm
-void mSoftRasterizer::DrawLine(int x1, int y1, int x2, int y2, DWORD color) 
+void mSoftRasterizer::DrawLine2D(int x1, int y1, int x2, int y2, DWORD color) 
 {
 	// 参数 c 为颜色值
 	int dx = abs(x2 - x1),
@@ -109,7 +220,7 @@ void mSoftRasterizer::DrawLine(int x1, int y1, int x2, int y2, DWORD color)
 	}
 }
 
-void mSoftRasterizer::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
+void mSoftRasterizer::DrawTriangle2D(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
 {
 	if(x1 >= m_BackSize.x || x1 < 0 || y1 >= m_BackSize.y || y1 < 0 || 
 		x2 >= m_BackSize.x || x2 < 0 || y2 >= m_BackSize.y || y2 < 0 || 
@@ -195,7 +306,7 @@ void mSoftRasterizer::DrawTriangle(int x1, int y1, int x2, int y2, int x3, int y
     }
 }
 
-void mSoftRasterizer::DrawTriangleV2(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
+void mSoftRasterizer::DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
 {
 	if(x1 >= m_BackSize.x || x1 < 0 || y1 >= m_BackSize.y || y1 < 0 || 
 		x2 >= m_BackSize.x || x2 < 0 || y2 >= m_BackSize.y || y2 < 0 || 
@@ -300,7 +411,7 @@ void mSoftRasterizer::DrawTriangleV2(int x1, int y1, int x2, int y2, int x3, int
                 {
                     for(int ix = x; ix < x + q; ix++)
                     {
-                        buffer[ix] = 0x00007F00; // Green
+                        buffer[ix] = color; // Green
                     }
 
                    buffer += m_BackSize.x;
@@ -322,7 +433,7 @@ void mSoftRasterizer::DrawTriangleV2(int x1, int y1, int x2, int y2, int x3, int
                     {
                         if(CX1 > 0 && CX2 > 0 && CX3 > 0)
                         {
-                            buffer[ix] = 0x0000007F; // Blue
+                            buffer[ix] = color; // Blue
                         }
 
                         CX1 -= FDY12;
@@ -342,3 +453,19 @@ void mSoftRasterizer::DrawTriangleV2(int x1, int y1, int x2, int y2, int x3, int
        ptr += q * m_BackSize.x;
     }
 }
+
+void mSoftRasterizer::ReadSkullModel()
+{
+	std::ifstream skullFile("skull.txt");
+
+	int VertexCount;
+	skullFile>>VertexCount;
+
+	skullFile.close();
+}
+
+void mSoftRasterizer::ClearQuick()
+{
+	memset(m_BackBuffer, 0, sizeof(DWORD)*m_BackSize.x*m_BackSize.y);
+}
+

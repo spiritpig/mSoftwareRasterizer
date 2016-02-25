@@ -17,10 +17,16 @@
 #include <memory.h>
 #include <tchar.h>
 #include <cmath>
+#include <vector>
+#include <fstream>
 
 #include "resource.h"
 #include "Vertex.h"
 #include "mMatrix4x4.h"
+#include "mCamera.h"
+
+const float PI = 3.14159265358979f;
+const float DEG_TO_RAD = PI / 180.0f;
 
 #define SAFE_DELETE(p) { if(p) { delete p; p=NULL; } }
 #define SAFE_DELARR(p) { if(p) { delete []p; p=NULL; } }

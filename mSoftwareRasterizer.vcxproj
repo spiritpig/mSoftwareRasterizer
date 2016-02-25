@@ -83,6 +83,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="mCamera.h" />
     <ClInclude Include="mMatrix4x4.h" />
     <ClInclude Include="mSoftwareRasterizer.h" />
     <ClInclude Include="Resource.h" />
@@ -94,6 +95,7 @@
   <ItemGroup>
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mCamera.cpp" />
     <ClCompile Include="mMatrix4x4.cpp" />
     <ClCompile Include="mSoftwareRasterizer.cpp" />
     <ClCompile Include="stdafx.cpp">
