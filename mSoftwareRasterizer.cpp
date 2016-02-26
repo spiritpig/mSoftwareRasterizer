@@ -3,14 +3,17 @@
 CubeVertex cubeVert[8] = 
 {
 	{ Vertex4(-1,  1, -1, 1), 0, 0, 0xffff0000 },
-	{ Vertex4( 1,  1, -1, 1), 0, 0, 0xff00ff00 },
-	{ Vertex4(-1, -1, -1, 1), 0, 0, 0xff0000ff },
-	{ Vertex4( 1, -1, -1, 1), 0, 0, 0xfff0f000 },
+	{ Vertex4( 1,  1, -1, 1), 1, 0, 0xff00ff00 },
+	{ Vertex4(-1, -1, -1, 1), 0, 1, 0xff0000ff },
+	{ Vertex4( 1, -1, -1, 1), 1, 1, 0xfff0f000 },
 	{ Vertex4(-1,  1,  1, 1), 0, 0, 0xff00f0f0 },
-	{ Vertex4( 1,  1,  1, 1), 0, 0, 0xfff000f0 },
-	{ Vertex4(-1, -1,  1, 1), 0, 0, 0xfff0f0f0 },
-	{ Vertex4( 1, -1,  1, 1), 0, 0, 0xff111111 }
+	{ Vertex4( 1,  1,  1, 1), 1, 0, 0xfff000f0 },
+	{ Vertex4(-1, -1,  1, 1), 0, 1, 0xfff0f0f0 },
+	{ Vertex4( 1, -1,  1, 1), 1, 1, 0xff111111 }
 };
+
+#define TEX_WIDTH	512
+#define TEX_HEIGHT	512
 
 mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 	: m_hWnd(hWnd), m_BackBuffer(NULL)
@@ -37,10 +40,31 @@ mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 	m_PreVertexList.push_back(cubeVert[5]);
 	m_PreVertexList.push_back(cubeVert[6]);
 	m_PreVertexList.push_back(cubeVert[7]);
+
+	// 初始化全局纹理
+	m_MainTexture = new unsigned int[TEX_WIDTH*TEX_HEIGHT];
+	for(int row=0; row<64; ++row)
+	{
+		for(int col=0; col<64; ++col)
+		{
+			for(int i=0; i<8; ++i)
+			{
+				if(col%2)
+				{
+					memset(m_MainTexture + (i + 8*row)*TEX_WIDTH + col*8, 0xff, sizeof(DWORD)*8);
+				}
+				else
+				{
+					memset(m_MainTexture + (i + 8*row)*TEX_WIDTH + col*8, 0x90, sizeof(DWORD)*8);
+				}
+			}
+		}
+	}
 }
 
 mSoftRasterizer::~mSoftRasterizer()
 {
+	SAFE_DELARR(m_MainTexture);
 	DeleteObject(m_hBackBmp);
 	DeleteDC(m_hBackDc);
 	m_BackBuffer = NULL;
@@ -49,12 +73,19 @@ mSoftRasterizer::~mSoftRasterizer()
 void mSoftRasterizer::Init()
 {
 	mMatrix4x4::MatIdentify(m_World);
-	m_Camera.Set(Vertex3(0, 0, -5), Vertex3(0, 0, 5), Vertex3(0, 1, 0));
-	mMatrix4x4::MatPerspective(m_Proj, 90.0f, 800.0f/600.0f, 1.0f, 2000.0f);
+	m_Camera.Set(Vertex3(0, 0, -5.0f), Vertex3(0, 0, 5.0f), Vertex3(0, 1.0f, 0));
+	mMatrix4x4::MatPerspective(m_Proj, 90.0f, (float)m_BackSize.x/m_BackSize.y, 1.0f, 2000.0f);
 }
 
 void mSoftRasterizer::Update()
 {
+	static float rot = 0.0f;
+
+	mMatrix4x4 rotate;
+	mMatrix4x4::MatIdentify(rotate);
+	rot += 0.05f;
+	mMatrix4x4::MatRotateX(rotate, DEG_TO_RAD*rot);
+	m_World = rotate;
 	m_Transform = m_World*m_Camera.GetView()*m_Proj;
 
 	static std::vector<CubeVertex> resVertexList;
@@ -117,14 +148,14 @@ void mSoftRasterizer::Update()
 		resVertexList[i].pos.z = resVertexList[i].pos.z*rhw;
 
 		resVertexList[i].color = m_PreVertexList[m_IndexList[i]].color;
+
+		resVertexList[i].u = m_PreVertexList[m_IndexList[i]].u;
+		resVertexList[i].v = m_PreVertexList[m_IndexList[i]].v;
 	}
 
 	for(size_t i=0; i<resVertexList.size(); i+=3)
 	{
-		DrawTriangle2DV2(resVertexList[i].pos.x, resVertexList[i].pos.y, 
-						resVertexList[i+1].pos.x, resVertexList[i+1].pos.y,
-						resVertexList[i+2].pos.x, resVertexList[i+2].pos.y, 
-						resVertexList[i].color);
+		DrawTriangle2DV2(resVertexList[i], resVertexList[i+1], resVertexList[i+2], resVertexList[i].color);
 	}
 }
 
@@ -220,11 +251,11 @@ void mSoftRasterizer::DrawLine2D(int x1, int y1, int x2, int y2, DWORD color)
 	}
 }
 
-void mSoftRasterizer::DrawTriangle2D(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
+void mSoftRasterizer::DrawTriangle2D(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
 {
-	if(x1 >= m_BackSize.x || x1 < 0 || y1 >= m_BackSize.y || y1 < 0 || 
-		x2 >= m_BackSize.x || x2 < 0 || y2 >= m_BackSize.y || y2 < 0 || 
-		x3 >= m_BackSize.x || x3 < 0 || y3 >= m_BackSize.y || y3 < 0)
+	if(v1.pos.x >= m_BackSize.x || v1.pos.x < 0 || v1.pos.y >= m_BackSize.y || v1.pos.y < 0 || 
+		v2.pos.x >= m_BackSize.x || v2.pos.x < 0 || v2.pos.y >= m_BackSize.y || v2.pos.y < 0 || 
+		v3.pos.x >= m_BackSize.x || v3.pos.x < 0 || v3.pos.y >= m_BackSize.y || v3.pos.y < 0)
 	{
 		return;
 	}
@@ -232,13 +263,13 @@ void mSoftRasterizer::DrawTriangle2D(int x1, int y1, int x2, int y2, int x3, int
 	DWORD *ptr = (DWORD *)m_BackBuffer;
 	
     // 28.4 fixed-point coordinates
-    const int Y1 = (int)(16.0f * y1);
-    const int Y2 = (int)(16.0f * y2);
-    const int Y3 = (int)(16.0f * y3);
+	const int Y1 = (int)(16.0f * v1.pos.y);
+    const int Y2 = (int)(16.0f * v2.pos.y);
+    const int Y3 = (int)(16.0f * v3.pos.y);
 
-    const int X1 = (int)(16.0f * x1);
-    const int X2 = (int)(16.0f * x2);
-    const int X3 = (int)(16.0f * x3);
+    const int X1 = (int)(16.0f * v1.pos.x);
+    const int X2 = (int)(16.0f * v2.pos.x);
+    const int X3 = (int)(16.0f * v3.pos.x);
 
     // Deltas
     const int DX12 = X1 - X2;
@@ -306,11 +337,11 @@ void mSoftRasterizer::DrawTriangle2D(int x1, int y1, int x2, int y2, int x3, int
     }
 }
 
-void mSoftRasterizer::DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color)
+void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
 {
-	if(x1 >= m_BackSize.x || x1 < 0 || y1 >= m_BackSize.y || y1 < 0 || 
-		x2 >= m_BackSize.x || x2 < 0 || y2 >= m_BackSize.y || y2 < 0 || 
-		x3 >= m_BackSize.x || x3 < 0 || y3 >= m_BackSize.y || y3 < 0)
+	if(v1.pos.x >= m_BackSize.x || v1.pos.x < 0 || v1.pos.y >= m_BackSize.y || v1.pos.y < 0 || 
+		v2.pos.x >= m_BackSize.x || v2.pos.x < 0 || v2.pos.y >= m_BackSize.y || v2.pos.y < 0 || 
+		v3.pos.x >= m_BackSize.x || v3.pos.x < 0 || v3.pos.y >= m_BackSize.y || v3.pos.y < 0)
 	{
 		return;
 	}
@@ -318,13 +349,13 @@ void mSoftRasterizer::DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, i
 	DWORD *ptr = (DWORD *)m_BackBuffer;
 	
     // 28.4 fixed-point coordinates
-    const int Y1 = (int)(16.0f * y1);
-    const int Y2 = (int)(16.0f * y2);
-    const int Y3 = (int)(16.0f * y3);
+    const int Y1 = (int)(16.0f * v1.pos.y);
+    const int Y2 = (int)(16.0f * v2.pos.y);
+    const int Y3 = (int)(16.0f * v3.pos.y);
 
-    const int X1 = (int)(16.0f * x1);
-    const int X2 = (int)(16.0f * x2);
-    const int X3 = (int)(16.0f * x3);
+    const int X1 = (int)(16.0f * v1.pos.x);
+    const int X2 = (int)(16.0f * v2.pos.x);
+    const int X3 = (int)(16.0f * v3.pos.x);
 
     // Deltas
     const int DX12 = X1 - X2;
@@ -411,7 +442,16 @@ void mSoftRasterizer::DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, i
                 {
                     for(int ix = x; ix < x + q; ix++)
                     {
-                        buffer[ix] = color; // Green
+						float c = ((v1.pos.y-v2.pos.y)*(ix)+(v2.pos.x-v1.pos.x)*(y+iy)+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y)/
+								((v1.pos.y-v2.pos.y)*v3.pos.x+(v2.pos.x-v1.pos.x)*v3.pos.y+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y);
+						float b = ((v1.pos.y-v3.pos.y)*(ix)+(v3.pos.x-v1.pos.x)*(y+iy)+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y)/
+								((v1.pos.y-v3.pos.y)*v2.pos.x+(v3.pos.x-v1.pos.x)*v2.pos.y+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y);
+						float a = 1-b-c;
+
+						float u,v;
+						u = a*v1.u + b*v2.u + c*v3.u;
+						v = a*v1.v + b*v2.v + c*v3.v;
+						buffer[ix] = m_MainTexture[(int)(u*TEX_WIDTH + v*TEX_HEIGHT*TEX_WIDTH)];
                     }
 
                    buffer += m_BackSize.x;
@@ -433,7 +473,16 @@ void mSoftRasterizer::DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, i
                     {
                         if(CX1 > 0 && CX2 > 0 && CX3 > 0)
                         {
-                            buffer[ix] = color; // Blue
+                           	float c = ((v1.pos.y-v2.pos.y)*(ix)+(v2.pos.x-v1.pos.x)*(iy)+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y)/
+									((v1.pos.y-v2.pos.y)*v3.pos.x+(v2.pos.x-v1.pos.x)*v3.pos.y+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y);
+							float b = ((v1.pos.y-v3.pos.y)*(ix)+(v3.pos.x-v1.pos.x)*(iy)+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y)/
+									((v1.pos.y-v3.pos.y)*v2.pos.x+(v3.pos.x-v1.pos.x)*v2.pos.y+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y);
+							float a = 1-b-c;
+
+							float u,v;
+							u = a*v1.u + b*v2.u + c*v3.u;
+							v = a*v1.v + b*v2.v + c*v3.v;
+							buffer[ix] = m_MainTexture[(int)(u*TEX_WIDTH + v*TEX_HEIGHT*TEX_WIDTH)];
                         }
 
                         CX1 -= FDY12;

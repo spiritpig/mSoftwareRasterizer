@@ -24,15 +24,15 @@ public:
 
 	void DrawPoint(int x, int y, int Size, DWORD color);
 	void DrawLine2D(int x1, int y1, int x2, int y2, DWORD color);
-	void DrawTriangle2D(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color);
-	void DrawTriangle2DV2(int x1, int y1, int x2, int y2, int x3, int y3, DWORD color);
+	void DrawTriangle2D(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
 
 	void ReadSkullModel();
 	void ClearQuick();
 
 private:
 	HWND m_hWnd;
-	DWORD *m_BackBuffer;
+	unsigned int *m_BackBuffer, *m_MainTexture;
 	HDC m_hBackDc;
 	HBITMAP m_hBackBmp;
 	POINT m_BackSize;

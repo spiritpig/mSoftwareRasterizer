@@ -96,6 +96,30 @@ void mMatrix4x4::MatScale(mMatrix4x4 &mat, float x, float y, float z)
 	mat.m_Val[2][2] *= z; 
 }
 
+void mMatrix4x4::MatRotateX(mMatrix4x4 &mat, float val)
+{
+	mat.m_Val[1][1] = cos(val);
+	mat.m_Val[1][2] = sin(val);
+	mat.m_Val[2][1] = -sin(val);
+	mat.m_Val[2][2] = cos(val);
+}
+
+void mMatrix4x4::MatRotateY(mMatrix4x4 &mat, float val)
+{
+	mat.m_Val[0][0] = cos(val);
+	mat.m_Val[0][2] = -sin(val);
+	mat.m_Val[2][0] = sin(val);
+	mat.m_Val[2][2] = cos(val);
+}
+
+void mMatrix4x4::MatRotateZ(mMatrix4x4 &mat, float val)
+{
+	mat.m_Val[0][0] = cos(val);
+	mat.m_Val[0][1] = sin(val);
+	mat.m_Val[1][0] = -sin(val);
+	mat.m_Val[1][1] = cos(val);
+}
+
 void mMatrix4x4::MatLookAt(mMatrix4x4 &mat, Vertex3 &eye, Vertex3 &lookat, Vertex3 &up)
 {
 	Vertex3 eyeline = lookat - eye;
