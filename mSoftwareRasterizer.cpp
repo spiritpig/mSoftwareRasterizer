@@ -2,18 +2,18 @@
 
 CubeVertex cubeVert[8] = 
 {
-	{ Vertex4(-1,  1, -1, 1), 0, 0, 0xffff0000 },
-	{ Vertex4( 1,  1, -1, 1), 1, 0, 0xff00ff00 },
-	{ Vertex4(-1, -1, -1, 1), 0, 1, 0xff0000ff },
-	{ Vertex4( 1, -1, -1, 1), 1, 1, 0xfff0f000 },
-	{ Vertex4(-1,  1,  1, 1), 0, 0, 0xff00f0f0 },
-	{ Vertex4( 1,  1,  1, 1), 1, 0, 0xfff000f0 },
-	{ Vertex4(-1, -1,  1, 1), 0, 1, 0xfff0f0f0 },
-	{ Vertex4( 1, -1,  1, 1), 1, 1, 0xff111111 }
+	{ Vertex4(-1,  1, -1, 1), 0, 0, 0x00ff0000 },
+	{ Vertex4( 1,  1, -1, 1), 1, 0, 0x00ff0000 },
+	{ Vertex4(-1, -1, -1, 1), 0, 1, 0x0000ff00 },
+	{ Vertex4( 1, -1, -1, 1), 1, 1, 0x0000ff00 },
+	{ Vertex4(-1,  1,  1, 1), 0, 0, 0x000000ff },
+	{ Vertex4( 1,  1,  1, 1), 1, 0, 0x000000ff },
+	{ Vertex4(-1, -1,  1, 1), 0, 1, 0x0000f0f0 },
+	{ Vertex4( 1, -1,  1, 1), 1, 1, 0x0000f0f0 }
 };
 
-#define TEX_WIDTH	512
-#define TEX_HEIGHT	512
+#define TEX_WIDTH	2048
+#define TEX_HEIGHT	2048
 
 mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 	: m_hWnd(hWnd), m_BackBuffer(NULL)
@@ -43,19 +43,36 @@ mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 
 	// 初始化全局纹理
 	m_MainTexture = new unsigned int[TEX_WIDTH*TEX_HEIGHT];
-	for(int row=0; row<64; ++row)
+	// 棋盘的格子数（正方形棋盘，行列的格子数一致）
+	int blockNum = 16;
+	// 单个格子的尺寸
+	int blockWidth = TEX_WIDTH/blockNum;
+	for(int row=0; row<blockNum; ++row)
 	{
-		for(int col=0; col<64; ++col)
+		for(int col=0; col<blockNum; ++col)
 		{
-			for(int i=0; i<8; ++i)
+			for(int i=0; i<blockWidth; ++i)
 			{
-				if(col%2)
+				bool isOddRow = row%2, isOddCol = col%2;
+				char oddColor, evenColor;
+				if(isOddRow)
 				{
-					memset(m_MainTexture + (i + 8*row)*TEX_WIDTH + col*8, 0xff, sizeof(DWORD)*8);
+					oddColor = 0xff;
+					evenColor = 0x50;
 				}
 				else
 				{
-					memset(m_MainTexture + (i + 8*row)*TEX_WIDTH + col*8, 0x90, sizeof(DWORD)*8);
+					oddColor = 0x50;
+					evenColor = 0xff;
+				}
+
+				if(col%2)
+				{
+					memset(m_MainTexture + (i + blockWidth*row)*TEX_WIDTH + col*blockWidth, oddColor, sizeof(DWORD)*blockWidth);
+				}
+				else
+				{
+					memset(m_MainTexture + (i + blockWidth*row)*TEX_WIDTH + col*blockWidth, evenColor, sizeof(DWORD)*blockWidth);
 				}
 			}
 		}
@@ -85,77 +102,143 @@ void mSoftRasterizer::Update()
 	mMatrix4x4::MatIdentify(rotate);
 	rot += 0.05f;
 	mMatrix4x4::MatRotateX(rotate, DEG_TO_RAD*rot);
-	m_World = rotate;
+	//m_World = rotate;
 	m_Transform = m_World*m_Camera.GetView()*m_Proj;
 
 	static std::vector<CubeVertex> resVertexList;
 	resVertexList.clear();
-	resVertexList.resize(36);
 
 	m_IndexList.clear();
 	m_IndexList.resize(36);
 	m_IndexList[0] = 0;
 	m_IndexList[1] = 2;
 	m_IndexList[2] = 1;
-	m_IndexList[3] = 2;
-	m_IndexList[4] = 3;
-	m_IndexList[5] = 1;
+	m_IndexList[3] = 3;
+	m_IndexList[4] = 1;
+	m_IndexList[5] = 2;
 
 	m_IndexList[6] = 1;
 	m_IndexList[7] = 3;
 	m_IndexList[8] = 5;
-	m_IndexList[9] = 3;
-	m_IndexList[10] = 7;
-	m_IndexList[11] = 5;
+	m_IndexList[9] = 7;
+	m_IndexList[10] = 5;
+	m_IndexList[11] = 3;
 
 	m_IndexList[12] = 4;
 	m_IndexList[13] = 5;
 	m_IndexList[14] = 6;
-	m_IndexList[15] = 6;
-	m_IndexList[16] = 5;
-	m_IndexList[17] = 7;
+	m_IndexList[15] = 7;
+	m_IndexList[16] = 6;
+	m_IndexList[17] = 5;
 
 	m_IndexList[18] = 0;
 	m_IndexList[19] = 4;
 	m_IndexList[20] = 2;
-	m_IndexList[21] = 2;
-	m_IndexList[22] = 4;
-	m_IndexList[23] = 6;
+	m_IndexList[21] = 6;
+	m_IndexList[22] = 2;
+	m_IndexList[23] = 4;
 
 	m_IndexList[24] = 4;
 	m_IndexList[25] = 0;
 	m_IndexList[26] = 5;
-	m_IndexList[27] = 0;
-	m_IndexList[28] = 1;
-	m_IndexList[29] = 5;
+	m_IndexList[27] = 1;
+	m_IndexList[28] = 5;
+	m_IndexList[29] = 0;
 
 	m_IndexList[30] = 6;
 	m_IndexList[31] = 7;
 	m_IndexList[32] = 2;
-	m_IndexList[33] = 2;
-	m_IndexList[34] = 7;
-	m_IndexList[35] = 3;
+	m_IndexList[33] = 3;
+	m_IndexList[34] = 2;
+	m_IndexList[35] = 7;
 
 
+	CubeVertex tempVert;
 	// 顶点变换
-	for(size_t i=0; i<m_IndexList.size(); ++i)
+	for(size_t i=0; i<m_IndexList.size(); i+=6)
 	{
-		resVertexList[i].pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i]].pos, m_Transform);
+		// 非背面，不裁剪
+		if(!_BackFaceCull(m_PreVertexList[m_IndexList[i]], m_PreVertexList[m_IndexList[i+1]], m_PreVertexList[m_IndexList[i+2]]))
+		{
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i]].pos, m_Transform);
+			float rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 0.0f;
+			tempVert.v = 0.0f;
 
-		float rhw = 1/resVertexList[i].pos.w;
-		resVertexList[i].pos.x = (resVertexList[i].pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
-		resVertexList[i].pos.y = (-resVertexList[i].pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
-		resVertexList[i].pos.z = resVertexList[i].pos.z*rhw;
+			resVertexList.push_back(tempVert);
 
-		resVertexList[i].color = m_PreVertexList[m_IndexList[i]].color;
+			// 第二个顶点
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i+1]].pos, m_Transform);
+			rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 0.0f;
+			tempVert.v = 1.0f;
 
-		resVertexList[i].u = m_PreVertexList[m_IndexList[i]].u;
-		resVertexList[i].v = m_PreVertexList[m_IndexList[i]].v;
+			resVertexList.push_back(tempVert);
+
+			// 第三个顶点
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i+2]].pos, m_Transform);
+			rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 1.0f;
+			tempVert.v = 0.0f;
+
+			resVertexList.push_back(tempVert);
+		}
+
+		// 非背面，不裁剪
+		if(!_BackFaceCull(m_PreVertexList[m_IndexList[i+3]], m_PreVertexList[m_IndexList[i+4]], m_PreVertexList[m_IndexList[i+5]]))
+		{
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i+3]].pos, m_Transform);
+			float rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 1.0f;
+			tempVert.v = 1.0f;
+
+			resVertexList.push_back(tempVert);
+
+			// 第二个顶点
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i+4]].pos, m_Transform);
+			rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 1.0f;
+			tempVert.v = 0.0f;
+
+			resVertexList.push_back(tempVert);
+
+			// 第三个顶点
+			tempVert.pos = mMatrix4x4::MatMultiply(m_PreVertexList[m_IndexList[i+5]].pos, m_Transform);
+			rhw = 1/tempVert.pos.w;
+			tempVert.pos.x = (tempVert.pos.x*rhw + 1.0f) * m_BackSize.x * 0.5f;
+			tempVert.pos.y = (-tempVert.pos.y*rhw + 1.0f) * m_BackSize.y * 0.5f;
+			tempVert.pos.z = tempVert.pos.z*rhw;
+			tempVert.color = 0xffffffff / (i+1);
+			tempVert.u = 0.0f;
+			tempVert.v = 1.0f;
+
+			resVertexList.push_back(tempVert);
+		}
 	}
 
 	for(size_t i=0; i<resVertexList.size(); i+=3)
 	{
-		DrawTriangle2DV2(resVertexList[i], resVertexList[i+1], resVertexList[i+2], resVertexList[i].color);
+		DrawTriangle_ScanLine(resVertexList[i], resVertexList[i+1], resVertexList[i+2], resVertexList[i].color);
 	}
 }
 
@@ -251,7 +334,7 @@ void mSoftRasterizer::DrawLine2D(int x1, int y1, int x2, int y2, DWORD color)
 	}
 }
 
-void mSoftRasterizer::DrawTriangle2D(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
+void mSoftRasterizer::DrawTriangle_Tiled(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
 {
 	if(v1.pos.x >= m_BackSize.x || v1.pos.x < 0 || v1.pos.y >= m_BackSize.y || v1.pos.y < 0 || 
 		v2.pos.x >= m_BackSize.x || v2.pos.x < 0 || v2.pos.y >= m_BackSize.y || v2.pos.y < 0 || 
@@ -337,7 +420,7 @@ void mSoftRasterizer::DrawTriangle2D(CubeVertex &v1, CubeVertex &v2, CubeVertex 
     }
 }
 
-void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
+void mSoftRasterizer::DrawTriangle_TiledV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
 {
 	if(v1.pos.x >= m_BackSize.x || v1.pos.x < 0 || v1.pos.y >= m_BackSize.y || v1.pos.y < 0 || 
 		v2.pos.x >= m_BackSize.x || v2.pos.x < 0 || v2.pos.y >= m_BackSize.y || v2.pos.y < 0 || 
@@ -400,7 +483,12 @@ void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVerte
     if(DY23 < 0 || (DY23 == 0 && DX23 > 0)) C2++;
     if(DY31 < 0 || (DY31 == 0 && DX31 > 0)) C3++;
 
-    // Loop through blocks
+	Vertex2 vert21(v1.pos.x, v1.pos.y);
+	Vertex2 vert22(v2.pos.x, v2.pos.y);
+	Vertex2 vert23(v3.pos.x, v3.pos.y);
+  	Vertex2 edge1 = vert22 - vert21;
+	Vertex2 edge2 = vert23 - vert21;  
+	// Loop through blocks
     for(int y = miny; y < maxy; y += q)
     {
         for(int x = minx; x < maxx; x += q)
@@ -438,20 +526,40 @@ void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVerte
             // Accept whole block when totally covered
             if(a == 0xF && b == 0xF && c == 0xF)
             {
-                for(int iy = 0; iy < q; iy++)
+                for(int iy = y; iy < y + q; iy++)
                 {
                     for(int ix = x; ix < x + q; ix++)
                     {
-						float c = ((v1.pos.y-v2.pos.y)*(ix)+(v2.pos.x-v1.pos.x)*(y+iy)+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y)/
-								((v1.pos.y-v2.pos.y)*v3.pos.x+(v2.pos.x-v1.pos.x)*v3.pos.y+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y);
-						float b = ((v1.pos.y-v3.pos.y)*(ix)+(v3.pos.x-v1.pos.x)*(y+iy)+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y)/
-								((v1.pos.y-v3.pos.y)*v2.pos.x+(v3.pos.x-v1.pos.x)*v2.pos.y+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y);
-						float a = 1-b-c;
+						// 计算重心坐标，利用面积比计算
+						float temp;
+						Vertex2 ep1 = Vertex2((float)ix, (float)iy) - vert21;
 
-						float u,v;
-						u = a*v1.u + b*v2.u + c*v3.u;
-						v = a*v1.v + b*v2.v + c*v3.v;
-						buffer[ix] = m_MainTexture[(int)(u*TEX_WIDTH + v*TEX_HEIGHT*TEX_WIDTH)];
+						temp = Vertex2::Vec2Cross(edge1, edge2);
+						float areaTri = abs(temp);
+						temp = Vertex2::Vec2Cross(edge1, ep1);
+						float areaC = abs(temp);
+						temp = Vertex2::Vec2Cross(edge2, ep1);
+						float areaB = abs(temp);
+						float c = areaC/areaTri;
+						float b = areaB/areaTri;
+						float a = 1 - c - b;
+
+						int u,v;
+						double zr = a*(1/v1.pos.w) + b*(1/v2.pos.w) + c*(1/v3.pos.w);
+						u = (int)(((a*(v1.u/v1.pos.w) + b*(v2.u/v2.pos.w) + c*(v3.u/v3.pos.w)) / zr) * TEX_WIDTH);
+						v = (int)(((a*(v1.v/v1.pos.w) + b*(v2.v/v2.pos.w) + c*(v3.v/v3.pos.w)) / zr) * TEX_HEIGHT);
+
+						int index = (int)(u + v*TEX_WIDTH);
+						if(index < 0)
+						{
+							index = 0;
+						}
+						else
+						if(index >= TEX_WIDTH*TEX_HEIGHT)
+						{
+							index = TEX_WIDTH*TEX_HEIGHT-1;
+						}
+						buffer[ix] = m_MainTexture[index];
                     }
 
                    buffer += m_BackSize.x;
@@ -473,16 +581,36 @@ void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVerte
                     {
                         if(CX1 > 0 && CX2 > 0 && CX3 > 0)
                         {
-                           	float c = ((v1.pos.y-v2.pos.y)*(ix)+(v2.pos.x-v1.pos.x)*(iy)+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y)/
-									((v1.pos.y-v2.pos.y)*v3.pos.x+(v2.pos.x-v1.pos.x)*v3.pos.y+v1.pos.x*v2.pos.y-v2.pos.x*v1.pos.y);
-							float b = ((v1.pos.y-v3.pos.y)*(ix)+(v3.pos.x-v1.pos.x)*(iy)+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y)/
-									((v1.pos.y-v3.pos.y)*v2.pos.x+(v3.pos.x-v1.pos.x)*v2.pos.y+v1.pos.x*v3.pos.y-v3.pos.x*v1.pos.y);
-							float a = 1-b-c;
+							// 计算重心坐标，利用面积比计算
+							float temp;
+							Vertex2 ep1 = Vertex2((float)ix, (float)iy) - vert21;
 
-							float u,v;
-							u = a*v1.u + b*v2.u + c*v3.u;
-							v = a*v1.v + b*v2.v + c*v3.v;
-							buffer[ix] = m_MainTexture[(int)(u*TEX_WIDTH + v*TEX_HEIGHT*TEX_WIDTH)];
+							temp = Vertex2::Vec2Cross(edge1, edge2);
+							float areaTri = abs(temp);
+							temp = Vertex2::Vec2Cross(edge1, ep1);
+							float areaC = abs(temp);
+							temp = Vertex2::Vec2Cross(edge2, ep1);
+							float areaB = abs(temp);
+							float c = areaC/areaTri;
+							float b = areaB/areaTri;
+							float a = 1 - c - b;
+
+							int u,v;
+							double zr = a*(1/v1.pos.w) + b*(1/v2.pos.w) + c*(1/v3.pos.w);
+							u = (int)(((a*(v1.u/v1.pos.w) + b*(v2.u/v2.pos.w) + c*(v3.u/v3.pos.w)) / zr) * TEX_WIDTH);
+							v = (int)(((a*(v1.v/v1.pos.w) + b*(v2.v/v2.pos.w) + c*(v3.v/v3.pos.w)) / zr) * TEX_HEIGHT);
+
+							int index = (int)(u + v*TEX_WIDTH);
+							if(index < 0)
+							{
+								index = 0;
+							}
+							else
+							if(index >= TEX_WIDTH*TEX_HEIGHT)
+							{
+								index = TEX_WIDTH*TEX_HEIGHT-1;
+							}
+							buffer[ix] = m_MainTexture[index];
                         }
 
                         CX1 -= FDY12;
@@ -503,6 +631,36 @@ void mSoftRasterizer::DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVerte
     }
 }
 
+void mSoftRasterizer::DrawTriangle_ScanLine(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
+{
+	// 确保顶点按照Y的顺序排序
+	_SortThree(v1, v2, v3);
+	if(FloatCmp(v1.pos.y, v2.pos.y))
+	{
+		_DrawTriangle_Top(v1, v2, v3, color);
+	}
+	else
+	if(FloatCmp(v2.pos.y, v3.pos.y))
+	{
+		_DrawTriangle_Bottom(v1, v2, v3, color);
+	}
+	else
+	{
+		// 为了防止vert23,vert21构成的线段斜率为0，使用变化量求截取线段的其中一个X值
+		// vert22.x 则为另一X值
+		CubeVertex v4;
+		float dy21 = v2.pos.y - v1.pos.y, dy31 = v3.pos.y - v1.pos.y;
+		v4.pos.x = v1.pos.x + dy21*(v3.pos.x - v1.pos.x)/dy31;
+		v4.pos.y = v2.pos.y;
+		v4.pos.z = v1.pos.z + dy21*(v3.pos.z - v1.pos.z)/dy31;
+		v4.u = v1.u + dy21*(v3.u - v1.u)/dy31;
+		v4.v = v1.v + dy21*(v3.v - v1.v)/dy31;
+
+		_DrawTriangle_Bottom(v1, v4, v2, color);
+		_DrawTriangle_Top(v4, v2, v3, color);
+	}
+}
+
 void mSoftRasterizer::ReadSkullModel()
 {
 	std::ifstream skullFile("skull.txt");
@@ -518,3 +676,286 @@ void mSoftRasterizer::ClearQuick()
 	memset(m_BackBuffer, 0, sizeof(DWORD)*m_BackSize.x*m_BackSize.y);
 }
 
+// 绘制平底三角形 + 透视纹理映射
+void mSoftRasterizer::_DrawTriangle_Bottom(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
+{
+	// 若三角形退化为直线，则直接绘制直线
+	if(FloatCmp(v1.pos.y, v2.pos.y))
+	{
+		DrawLine2D((int)v1.pos.x, (int)v1.pos.y, (int)v3.pos.x, (int)v3.pos.y, color);
+		return;
+	}
+
+	// 保证v2的X小于v3的X
+	if(v3.pos.x < v2.pos.x)
+	{
+		Swap<CubeVertex>(v2, v3);
+	}
+
+	// 计算x的插值系数。
+	float dxLeft, dxRight, dy21 = v2.pos.y - v1.pos.y, dy31 = v3.pos.y - v1.pos.y;
+	dxLeft = (v2.pos.x - v1.pos.x)/dy21;
+	dxRight = (v3.pos.x - v1.pos.x)/dy31;
+
+	int iy = (int)ceil(v1.pos.y);
+	float diyy = iy - v1.pos.y,
+		xStart = v1.pos.x + dxLeft*diyy,
+		xEnd = v1.pos.x + dxRight*diyy;
+
+	// 计算1/z, u/z, t/z的插值系数。
+	// 计算1/z
+	float invZ1, invZ2, invZ3;
+	if(v1.pos.z == 0)
+	{
+		invZ1 = 0;
+	}
+	else
+	{
+		invZ1 = 1/v1.pos.z;
+	}
+	if(v2.pos.z == 0)
+	{
+		invZ2 = 0;
+	}
+	else
+	{
+		invZ2 = 1/v2.pos.z;
+	}
+	if(v3.pos.z == 0)
+	{
+		invZ3 = 0;
+	}
+	else
+	{
+		invZ3 = 1/v3.pos.z;
+	}
+
+	float invZStart, invZEnd, dIzLeft, dIzRight, 
+	uStart, uEnd, duLeft, duRight,
+	vStart, vEnd, dvLeft, dvRight;
+
+	// 1/z的系数
+	dIzLeft = (invZ2 - invZ1)/dy21;
+	dIzRight = (invZ3 - invZ1)/dy31;
+	invZStart = invZ1 + dIzLeft*diyy;
+	invZEnd = invZ1 + dIzRight*diyy;
+
+	// u/z
+	float uDivZ1 = v1.u * invZ1, 
+		uDivZ2 = v2.u * invZ2, 
+		uDivZ3 = v3.u * invZ3;
+	duLeft = (uDivZ2 - uDivZ1)/dy21;
+	duRight = (uDivZ3 - uDivZ1)/dy31;
+	uStart = uDivZ1 + duLeft*diyy;
+	uEnd = uDivZ1 + duRight*diyy;
+
+	// v/z
+	float vDivZ1 = v1.v * invZ1, 
+		vDivZ2 = v2.v * invZ2, 
+		vDivZ3 = v3.v * invZ3;
+	dvLeft = (vDivZ2 - vDivZ1)/dy21;
+	dvRight = (vDivZ3 - vDivZ1)/dy31;
+	vStart = vDivZ1 + dvLeft*diyy;
+	vEnd = vDivZ1 + dvRight*diyy;
+
+	for(int curY=iy; curY<v3.pos.y; ++curY )
+	{
+		DrawLine2D((int)xStart, curY, (int)xEnd, curY, color);
+
+		xStart += dxLeft;
+		xEnd += dxRight;
+
+		// 处理纹理坐标的插值
+		float dx = xEnd - xStart;
+		float invZStep = (invZEnd - invZStart )/dx, 
+			uStep = (uEnd - uStart)/dx, 
+			vStep = (vEnd - vStart)/dx;
+		float curU = uStart, curV = vStart,
+			curInvZ = invZStart;
+		int x, xEndInt = (int)xEnd, u, v;
+		for(x=(int)xStart; x<xEndInt; ++x )
+		{
+			float uF = _AdjustUV(curU / curInvZ);
+			float vF = _AdjustUV(curV / curInvZ);
+			u = (int)(uF * TEX_WIDTH);
+			v = (int)(vF * TEX_HEIGHT);
+			m_BackBuffer[curY*m_BackSize.x + x] = m_MainTexture[v*TEX_WIDTH + u];
+
+			curU += uStep;
+			curV += vStep;
+			curInvZ += invZStep;
+		}
+
+		invZStart += dIzLeft;
+		invZEnd += dIzRight;
+		uStart += duLeft;
+		uEnd += duRight;
+		vStart += dvLeft;
+		vEnd += dvRight;
+	}
+}
+
+// 绘制平顶三角形
+void mSoftRasterizer::_DrawTriangle_Top(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color)
+{
+	// 若三角形退化为直线，则直接绘制直线
+	if(FloatCmp(v2.pos.y, v3.pos.y))
+	{
+		DrawLine2D((int)v1.pos.x, (int)v1.pos.y, (int)v2.pos.x, (int)v2.pos.y, color);
+		return;
+	}
+
+	// 保证v1的X小于v2的X
+	if(v2.pos.x < v1.pos.x)
+	{
+		Swap<CubeVertex>(v2, v1);
+	}
+
+	float dy31 = v3.pos.y - v1.pos.y,
+		dy32 = v3.pos.y - v2.pos.y,
+		dxLeft, dxRight;
+	dxLeft = (v3.pos.x - v1.pos.x)/dy31;
+	dxRight = (v3.pos.x - v2.pos.x)/dy32;
+
+	int iy = (int)ceil(v1.pos.y);
+	float diyy1 = iy - v1.pos.y, diyy2 = iy - v2.pos.y, 
+		xStart = v1.pos.x + dxLeft*diyy1,
+		xEnd = v2.pos.x + dxRight*diyy2;
+
+		// 计算1/z, u/z, t/z的插值系数。
+	// 计算1/z
+	float invZ1, invZ2, invZ3;
+	if(v1.pos.z == 0)
+	{
+		invZ1 = 0;
+	}
+	else
+	{
+		invZ1 = 1/v1.pos.z;
+	}
+	if(v2.pos.z == 0)
+	{
+		invZ2 = 0;
+	}
+	else
+	{
+		invZ2 = 1/v2.pos.z;
+	}
+	if(v3.pos.z == 0)
+	{
+		invZ3 = 0;
+	}
+	else
+	{
+		invZ3 = 1/v3.pos.z;
+	}
+
+	float invZStart, invZEnd, dIzLeft, dIzRight, 
+	uStart, uEnd, duLeft, duRight,
+	vStart, vEnd, dvLeft, dvRight;
+
+	// 1/z的系数
+	dIzLeft = (invZ3 - invZ1)/dy31;
+	dIzRight = (invZ3 - invZ2)/dy32;
+	invZStart = invZ1 + dIzLeft*diyy1;
+	invZEnd = invZ2 + dIzRight*diyy2;
+
+	// u/z
+	float uDivZ1 = v1.u * invZ1, 
+		uDivZ2 = v2.u * invZ2, 
+		uDivZ3 = v3.u * invZ3;
+	duLeft = (uDivZ3 - uDivZ1)/dy31;
+	duRight = (uDivZ3 - uDivZ2)/dy32;
+	uStart = uDivZ1 + duLeft*diyy1;
+	uEnd = uDivZ2 + duRight*diyy2;
+
+	// v/z
+	float vDivZ1 = v1.v * invZ1, 
+		vDivZ2 = v2.v * invZ2, 
+		vDivZ3 = v3.v * invZ3;
+	dvLeft = (vDivZ3 - vDivZ1)/dy31;
+	dvRight = (vDivZ3 - vDivZ2)/dy32;
+	vStart = vDivZ1 + dvLeft*diyy1;
+	vEnd = vDivZ2 + dvRight*diyy2;
+
+	for(int curY=iy; curY<v3.pos.y; ++curY )
+	{
+		DrawLine2D((int)xStart, curY, (int)xEnd, curY, color);
+
+		xStart += dxLeft;
+		xEnd += dxRight;
+
+		// 处理纹理坐标的插值
+		float dx = xEnd - xStart;
+		float invZStep = (invZEnd - invZStart )/dx, 
+			uStep = (uEnd - uStart)/dx, 
+			vStep = (vEnd - vStart)/dx;
+		float curU = uStart, curV = vStart,
+			curInvZ = invZStart;
+		int x = (int)xStart, xEndInt = (int)xEnd, u, v;
+		for(; x<xEndInt; ++x )
+		{
+			float uF = _AdjustUV(curU / curInvZ);
+			float vF = _AdjustUV(curV / curInvZ);
+			u = (int)(uF * TEX_WIDTH);
+			v = (int)(vF * TEX_HEIGHT);
+			m_BackBuffer[curY*m_BackSize.x + x] = m_MainTexture[v*TEX_WIDTH + u];
+
+			curU += uStep;
+			curV += vStep;
+			curInvZ += invZStep;
+		}
+
+		invZStart += dIzLeft;
+		invZEnd += dIzRight;
+		uStart += duLeft;
+		uEnd += duRight;
+		vStart += dvLeft;
+		vEnd += dvRight;
+	}
+}
+
+void mSoftRasterizer::_SortThree(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3)
+{
+	if(v1.pos.y > v2.pos.y)
+	{
+		Swap<CubeVertex>(v1, v2);
+	}
+	if(v2.pos.y > v3.pos.y)
+	{
+		Swap<CubeVertex>(v2, v3);
+	}
+	if(v1.pos.y > v2.pos.y)
+	{
+		Swap<CubeVertex>(v1, v2);
+	}
+}
+
+// true 为背面, 需裁剪
+// false 为正面, 不裁剪
+bool mSoftRasterizer::_BackFaceCull(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3)
+{
+	Vertex3 v12 = v2.pos - v1.pos;
+	Vertex3 v13 = v3.pos - v1.pos;
+	Vertex3 N;
+	Vertex3::Vec3Cross(N, v13, v12);
+
+	Vertex3 view = m_Camera.GetEye() - v1.pos;
+	if(Vertex3::Vec3Dot(view, N) < 0.0f)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+float mSoftRasterizer::_AdjustUV(float val)
+{
+	float mod = fmodf(val, 1.0f);
+	if(val < 0)
+	{
+		mod = 1.0f + mod;
+	}
+
+	return mod;
+}

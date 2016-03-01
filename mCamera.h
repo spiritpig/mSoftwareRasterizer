@@ -11,6 +11,10 @@ public:
 	{
 		return m_View;
 	}
+	const Vertex3& GetEye() const
+	{
+		return m_Eye;
+	}
 	void Set(const Vertex3 &eye, const Vertex3 &lookAt, const Vertex3 &up);
 	void Move(const Vertex3 &delta);
 

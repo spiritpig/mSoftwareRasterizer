@@ -24,13 +24,20 @@ public:
 
 	void DrawPoint(int x, int y, int Size, DWORD color);
 	void DrawLine2D(int x1, int y1, int x2, int y2, DWORD color);
-	void DrawTriangle2D(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
-	void DrawTriangle2DV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void DrawTriangle_Tiled(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void DrawTriangle_TiledV2(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void DrawTriangle_ScanLine(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
 
 	void ReadSkullModel();
 	void ClearQuick();
 
 private:
+	void _DrawTriangle_Bottom(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void _DrawTriangle_Top(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3, DWORD color);
+	void _SortThree(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3);
+	bool _BackFaceCull(CubeVertex &v1, CubeVertex &v2, CubeVertex &v3);
+	float _AdjustUV(float val);
+
 	HWND m_hWnd;
 	unsigned int *m_BackBuffer, *m_MainTexture;
 	HDC m_hBackDc;
