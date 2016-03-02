@@ -57,13 +57,13 @@ mSoftRasterizer::mSoftRasterizer(HWND hWnd, int width, int height)
 				char oddColor, evenColor;
 				if(isOddRow)
 				{
-					oddColor = 0xff;
-					evenColor = 0x50;
+					oddColor = (char)0xff;
+					evenColor = (char)0x50;
 				}
 				else
 				{
-					oddColor = 0x50;
-					evenColor = 0xff;
+					oddColor = (char)0x50;
+					evenColor = (char)0xff;
 				}
 
 				if(col%2)
@@ -100,7 +100,7 @@ void mSoftRasterizer::Update()
 
 	mMatrix4x4 rotate;
 	mMatrix4x4::MatIdentify(rotate);
-	rot += 0.05f;
+	rot += 0.3f;
 	mMatrix4x4::MatRotateX(rotate, DEG_TO_RAD*rot);
 	//m_World = rotate;
 	m_Transform = m_World*m_Camera.GetView()*m_Proj;
@@ -652,9 +652,13 @@ void mSoftRasterizer::DrawTriangle_ScanLine(CubeVertex &v1, CubeVertex &v2, Cube
 		float dy21 = v2.pos.y - v1.pos.y, dy31 = v3.pos.y - v1.pos.y;
 		v4.pos.x = v1.pos.x + dy21*(v3.pos.x - v1.pos.x)/dy31;
 		v4.pos.y = v2.pos.y;
-		v4.pos.z = v1.pos.z + dy21*(v3.pos.z - v1.pos.z)/dy31;
-		v4.u = v1.u + dy21*(v3.u - v1.u)/dy31;
-		v4.v = v1.v + dy21*(v3.v - v1.v)/dy31;
+		v4.pos.z = 1/v1.pos.z + dy21*(1/v3.pos.z - 1/v1.pos.z)/dy31;
+		float invz1 = 1/v1.pos.z, invz3 = 1/v3.pos.z;
+		v4.u = v1.u*invz1 + dy21*(v3.u*invz3 - v1.u*invz1)/dy31;
+		v4.v = v1.v*invz1 + dy21*(v3.v*invz3 - v1.v*invz1)/dy31;
+		v4.u /= v4.pos.z;
+		v4.v /= v4.pos.z;
+		v4.pos.z = 1/v4.pos.z;
 
 		_DrawTriangle_Bottom(v1, v4, v2, color);
 		_DrawTriangle_Top(v4, v2, v3, color);
@@ -767,7 +771,7 @@ void mSoftRasterizer::_DrawTriangle_Bottom(CubeVertex &v1, CubeVertex &v2, CubeV
 
 		// 处理纹理坐标的插值
 		float dx = xEnd - xStart;
-		float invZStep = (invZEnd - invZStart )/dx, 
+		float invZStep = (invZEnd - invZStart)/dx, 
 			uStep = (uEnd - uStart)/dx, 
 			vStep = (vEnd - vStart)/dx;
 		float curU = uStart, curV = vStart,
